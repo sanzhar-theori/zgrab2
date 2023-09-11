@@ -14,6 +14,7 @@ import (
 type Grab struct {
 	IP     string                  `json:"ip,omitempty"`
 	Domain string                  `json:"domain,omitempty"`
+	Port   uint                    `json:"port,omitempty"`
 	Data   map[string]ScanResponse `json:"data,omitempty"`
 }
 
@@ -124,6 +125,7 @@ func BuildGrabFromInputResponse(t *ScanTarget, responses map[string]ScanResponse
 	return &Grab{
 		IP:     ipstr,
 		Domain: t.Domain,
+		Port:   *t.Port,
 		Data:   responses,
 	}
 }

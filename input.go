@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -14,7 +15,11 @@ import (
 // returns the specified ipnet, domain, and tag, or an error.
 //
 // ZGrab2 input files have three fields:
-//   IP, DOMAIN, TAG
+//	IP, DOMAIN, TAG
+//
+// Added from fow: now have four fields:
+//
+//	IP, DOMAIN, TAG, PORT
 //
 // Each line specifies a target to scan by its IP address, domain
 // name, or both, as well as an optional tag used to determine which
@@ -27,7 +32,7 @@ import (
 // Trailing empty fields may be omitted.
 // Comment lines begin with #, and empty lines are ignored.
 //
-func ParseCSVTarget(fields []string) (ipnet *net.IPNet, domain string, tag string, err error) {
+func ParseCSVTarget(fields []string) (ipnet *net.IPNet, domain string, tag string, port uint, err error) {
 	for i := range fields {
 		fields[i] = strings.TrimSpace(fields[i])
 	}
@@ -48,6 +53,14 @@ func ParseCSVTarget(fields []string) (ipnet *net.IPNet, domain string, tag strin
 		tag = fields[2]
 	}
 	if len(fields) > 3 {
+		tp, er := strconv.ParseUint(fields[3], 10, 16)
+		if er != nil {
+			err = fmt.Errorf("Not a valid port number: %q", fields[3])
+			return
+		}
+		port = uint(tp)
+	}
+	if len(fields) > 4 {
 		err = fmt.Errorf("too many fields: %q", fields)
 		return
 	}
@@ -102,7 +115,7 @@ func GetTargetsCSV(source io.Reader, ch chan<- ScanTarget) error {
 		if len(fields) == 0 {
 			continue
 		}
-		ipnet, domain, tag, err := ParseCSVTarget(fields)
+		ipnet, domain, tag, port, err := ParseCSVTarget(fields)
 		if err != nil {
 			log.Errorf("parse error, skipping: %v", err)
 			continue
@@ -112,14 +125,14 @@ func GetTargetsCSV(source io.Reader, ch chan<- ScanTarget) error {
 			if ipnet.Mask != nil {
 				// expand CIDR block into one target for each IP
 				for ip = ipnet.IP.Mask(ipnet.Mask); ipnet.Contains(ip); incrementIP(ip) {
-					ch <- ScanTarget{IP: duplicateIP(ip), Domain: domain, Tag: tag}
+					ch <- ScanTarget{IP: duplicateIP(ip), Domain: domain, Tag: tag, Port: &port}
 				}
 				continue
 			} else {
 				ip = ipnet.IP
 			}
 		}
-		ch <- ScanTarget{IP: ip, Domain: domain, Tag: tag}
+		ch <- ScanTarget{IP: ip, Domain: domain, Tag: tag, Port: &port}
 	}
 	return nil
 }

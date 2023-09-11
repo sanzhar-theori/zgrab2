@@ -670,8 +670,8 @@ func (scanner *Scanner) newIPPScan(target *zgrab2.ScanTarget, tls bool) *scan {
 	}
 	newScan.results = ScanResults{}
 	transport := &http.Transport{
-		Proxy:               nil, // TODO: implement proxying
-		DisableKeepAlives:   false,
+		Proxy:               nil,  // TODO: implement proxying
+		DisableKeepAlives:   true, // modified by fow
 		DisableCompression:  false,
 		MaxIdleConnsPerHost: scanner.config.MaxRedirects,
 	}

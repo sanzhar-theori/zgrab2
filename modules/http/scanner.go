@@ -305,6 +305,13 @@ func (scan *scan) dialContext(ctx context.Context, network string, addr string) 
 	if err != nil {
 		return nil, err
 	}
+	// modified by fow: setlinger
+	tcpConn, ok := conn.(*net.TCPConn)
+	if ok {
+		tcpConn.SetLinger(0)
+		conn = tcpConn
+	}
+	
 	scan.connections = append(scan.connections, conn)
 	return conn, nil
 }
@@ -316,6 +323,12 @@ func (scan *scan) getTLSDialer(t *zgrab2.ScanTarget) func(network, addr string) 
 		outer, err := scan.dialContext(context.Background(), network, addr)
 		if err != nil {
 			return nil, err
+		}
+		// modified by fow
+		tcpOuter, ok := outer.(*net.TCPConn)
+		if ok {
+			tcpOuter.SetLinger(0)
+			outer = tcpOuter
 		}
 		cfg, err := scan.scanner.config.TLSFlags.GetTLSConfigForTarget(t)
 		if err != nil {
@@ -449,10 +462,11 @@ func (scanner *Scanner) newHTTPScan(t *zgrab2.ScanTarget, useHTTPS bool) *scan {
 		scanner: scanner,
 		target:  t,
 		transport: &http.Transport{
-			Proxy:               nil, // TODO: implement proxying
-			DisableKeepAlives:   false,
-			DisableCompression:  false,
-			MaxIdleConnsPerHost: scanner.config.MaxRedirects,
+			Proxy:              nil,  // TODO: implement proxying
+			DisableKeepAlives:  true, // modified by fow
+			DisableCompression: true, // modified by fow
+			// MaxIdleConnsPerHost: scanner.config.MaxRedirects,
+			MaxIdleConnsPerHost: -1, // modified by fow
 		},
 		client:         http.MakeNewClient(),
 		globalDeadline: time.Now().Add(scanner.config.Timeout),

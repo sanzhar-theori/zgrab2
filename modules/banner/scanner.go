@@ -4,6 +4,7 @@
 package banner
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -134,13 +135,15 @@ func (scanner *Scanner) Scan(target zgrab2.ScanTarget) (zgrab2.ScanStatus, inter
 	var (
 		conn    net.Conn
 		tlsConn *zgrab2.TLSConnection
+		connerr error // added by fow: for persistent conn error checks
 		err     error
 		readerr error
 	)
 	for try < scanner.config.MaxTries {
 		try++
-		conn, err = target.Open(&scanner.config.BaseFlags)
-		if err != nil {
+		// modified by fow: fow persistent conn error checks
+		conn, connerr = target.Open(&scanner.config.BaseFlags)
+		if connerr != nil {
 			continue
 		}
 		if scanner.config.UseTLS {
@@ -157,9 +160,21 @@ func (scanner *Scanner) Scan(target zgrab2.ScanTarget) (zgrab2.ScanStatus, inter
 		break
 	}
 	if err != nil {
+	// modified by fow: we default the connection to SO_LINGER,
+	// therefore the connection should close right after connection failure
+	// in this aspect, the location of defer should be moved forward,
+	// which further implies we have to error-check manually
+	defer func() {
+		if connerr == nil {
+			conn.Close() // modified by fow: defer location is somewhat strage
+		}
+	}()
+
+	if err != nil || connerr != nil {
 		return zgrab2.TryGetScanStatus(err), nil, err
 	}
-	defer conn.Close()
+	// original defer location
+	// defer conn.Close()
 
 	var ret []byte
 	try = 0

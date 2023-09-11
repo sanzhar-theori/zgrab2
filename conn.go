@@ -247,6 +247,12 @@ func DialTimeoutConnectionEx(proto string, target string, dialTimeout, sessionTi
 		}
 		return nil, err
 	}
+
+	tcpConn, ok := conn.(*net.TCPConn)
+	if ok {
+		tcpConn.SetLinger(0)
+		return NewTimeoutConnection(context.Background(), tcpConn, sessionTimeout, readTimeout, writeTimeout, bytesReadLimit), nil
+	}
 	return NewTimeoutConnection(context.Background(), conn, sessionTimeout, readTimeout, writeTimeout, bytesReadLimit), nil
 }
 
@@ -307,6 +313,12 @@ func (d *Dialer) DialContext(ctx context.Context, network, address string) (net.
 	conn, err := d.Dialer.DialContext(dialContext, network, address)
 	if err != nil {
 		return nil, err
+	}
+	// modified by fow: setlinger
+	tcpConn, ok := conn.(*net.TCPConn)
+	if ok {
+		tcpConn.SetLinger(0)
+		conn = tcpConn
 	}
 	ret := NewTimeoutConnection(ctx, conn, d.Timeout, d.ReadTimeout, d.WriteTimeout, d.BytesReadLimit)
 	ret.BytesReadLimit = d.BytesReadLimit
