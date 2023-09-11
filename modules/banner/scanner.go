@@ -13,7 +13,6 @@ import (
 	"net"
 	"regexp"
 	"strconv"
-	"encoding/hex"
 
 	"github.com/zmap/zgrab2"
 )
