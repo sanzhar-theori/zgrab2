@@ -159,7 +159,6 @@ func (scanner *Scanner) Scan(target zgrab2.ScanTarget) (zgrab2.ScanStatus, inter
 
 		break
 	}
-	if err != nil {
 	// modified by fow: we default the connection to SO_LINGER,
 	// therefore the connection should close right after connection failure
 	// in this aspect, the location of defer should be moved forward,
